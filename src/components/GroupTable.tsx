@@ -3,8 +3,8 @@ import { Group } from '../types';
 
 export const GroupTable: React.FC<{ group: Group }> = ({ group }) => {
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl mb-8 overflow-hidden shadow-lg">
-      <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3 flex items-center justify-between">
+    <div className="glass-panel rounded-2xl mb-8 overflow-hidden shadow-lg">
+      <div className="bg-black/20 border-b border-white/10 text-white px-4 py-3 flex items-center justify-between">
         <h3 className="font-bold uppercase text-[12px] tracking-widest text-[#00B25B]">{group.name}</h3>
       </div>
       <div className="overflow-x-auto">

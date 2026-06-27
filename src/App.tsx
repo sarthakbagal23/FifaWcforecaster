@@ -3,10 +3,11 @@ import { INITIAL_MATCHES, GROUPS, TOP_SCORERS } from './data';
 import { MatchCard } from './components/MatchCard';
 import { GroupTable } from './components/GroupTable';
 import { Match, Group, WinProbabilityEntry, WinProbabilityResult } from './types';
-import { Trophy, Calendar, LayoutList, LineChart, Send, Loader2, Bell, X, LogIn, LogOut, Share2 } from 'lucide-react';
+import { Trophy, Calendar, LayoutList, LineChart, Send, Loader2, Bell, X, LogIn, LogOut, Share2, Menu } from 'lucide-react';
 import { auth, db, googleProvider } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
@@ -17,6 +18,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Win Probability State (replaces hardcoded Insights data)
   const [winProb, setWinProb] = useState<WinProbabilityEntry[]>([]);
@@ -496,7 +498,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0D1117] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#132A1C] via-[#0D1117] to-[#0D1117] text-slate-200 font-sans flex flex-col">
+    <div className="min-h-screen bg-mesh text-slate-200 font-sans flex flex-col custom-scrollbar overflow-y-auto">
       {/* Top Bar (Glassmorphism FotMob style) */}
       <header className="sticky top-0 z-20 bg-[#0D1117]/80 backdrop-blur-xl border-b border-white/10 shadow-md">
         <div className="px-4 py-4 flex justify-between items-center max-w-5xl mx-auto w-full">
@@ -557,8 +559,8 @@ export default function App() {
           </div>
         </div>
         
-        {/* FotMob Style Sub-nav */}
-        <nav className="flex overflow-x-auto max-w-5xl mx-auto w-full px-2 border-t border-white/10 hide-scrollbar pt-2 pb-2">
+        {/* Desktop Sub-nav */}
+        <nav className="hidden md:flex overflow-x-auto max-w-5xl mx-auto w-full px-2 hide-scrollbar pt-2 pb-2 border-t border-white/10">
           {[
             { id: 'matches', label: 'Matches', icon: Calendar },
             { id: 'groups', label: 'Groups', icon: LayoutList },
@@ -571,12 +573,20 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-4 text-[11px] uppercase font-bold tracking-widest transition-colors border-b-4 whitespace-nowrap ${
-                  isActive ? 'border-[#00B25B] text-white' : 'border-transparent text-white/50 hover:text-white/80 hover:border-white/20'
+                className={`relative flex items-center gap-2 px-6 py-4 text-[11px] uppercase font-bold tracking-widest transition-colors whitespace-nowrap ${
+                  isActive ? 'text-[#00B25B]' : 'text-white/50 hover:text-white/80'
                 }`}
               >
                 <Icon size={16} />
                 {tab.label}
+                {isActive && (
+                  <motion.div 
+                    layoutId="desktopActiveTab"
+                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#00B25B]"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
               </button>
             );
           })}
@@ -584,9 +594,17 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
-        {activeTab === 'matches' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8 pb-24 md:pb-8 relative">
+        <AnimatePresence mode="wait">
+          {activeTab === 'matches' && (
+            <motion.div 
+              key="matches"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-8"
+            >
             {liveMatches.length > 0 && (
               <section>
                 <h2 className="text-[11px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 text-[#00B25B]">
@@ -626,11 +644,17 @@ export default function App() {
                 </div>
               </section>
             )}
-          </div>
+          </motion.div>
         )}
 
         {activeTab === 'groups' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <motion.div 
+            key="groups"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
             <div className="mb-6 flex justify-between items-end border-b border-white/10 pb-3">
               <h2 className="font-sans font-bold text-2xl text-white">Standings</h2>
               <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Updated Live</span>
@@ -638,18 +662,25 @@ export default function App() {
             {groups.map(group => (
               <GroupTable key={group.name} group={group} />
             ))}
-          </div>
+          </motion.div>
         )}
 
         {activeTab === 'stats' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+          <motion.div 
+            key="stats"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-8"
+          >
             <section>
               <div className="mb-6 border-b border-white/10 pb-3">
                 <h2 className="font-sans font-bold text-2xl text-white">Player Stats</h2>
                 <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Golden Boot Race</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3">
+              <div className="glass-panel rounded-2xl overflow-hidden shadow-lg">
+                <div className="bg-black/20 border-b border-white/10 text-white px-4 py-3">
                   <h3 className="font-bold uppercase text-[12px] tracking-widest">Top Scorers</h3>
                 </div>
                 <div className="overflow-x-auto">
@@ -693,8 +724,8 @@ export default function App() {
                 <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Tournament Leaders</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-lg">
-                  <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3">
+                <div className="glass-panel rounded-2xl flex flex-col overflow-hidden shadow-lg">
+                  <div className="bg-black/20 border-b border-white/10 text-white px-4 py-3">
                     <h3 className="font-bold uppercase text-[12px] tracking-widest">Most Goals Scored</h3>
                   </div>
                   <div className="p-4 flex-1 text-white">
@@ -717,8 +748,8 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-lg">
-                  <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3">
+                <div className="glass-panel rounded-2xl flex flex-col overflow-hidden shadow-lg">
+                  <div className="bg-black/20 border-b border-white/10 text-white px-4 py-3">
                     <h3 className="font-bold uppercase text-[12px] tracking-widest">Clean Sheets</h3>
                   </div>
                   <div className="p-4 flex-1 text-white">
@@ -742,11 +773,17 @@ export default function App() {
                 </div>
               </div>
             </section>
-          </div>
+          </motion.div>
         )}
 
         {activeTab === 'insights' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <motion.div 
+            key="insights"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
             <div className="mb-6 border-b border-white/10 pb-3 flex justify-between items-end">
               <div>
                 <h2 className="font-sans font-bold text-2xl text-white">AI Tactical Desk</h2>
@@ -764,7 +801,9 @@ export default function App() {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Dynamic Win Probability */}
-              <div className="bg-white/5 backdrop-blur-md p-6 border border-white/10 rounded-2xl shadow-lg flex flex-col">
+              <div className="glass-panel p-6 rounded-2xl shadow-lg flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#00B25B]/5 rounded-full blur-[50px] pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col h-full">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] mb-2 flex items-center gap-1">
                   <LineChart size={12}/> Tournament Win Probability
                 </span>
@@ -836,16 +875,18 @@ export default function App() {
                     </div>
                   </>
                 )}
+                </div>
               </div>
 
               {/* Tactical AI Chat — improved with suggested prompts */}
-              <div className="bg-black/40 backdrop-blur-xl text-white flex flex-col border border-white/10 rounded-2xl shadow-lg h-[480px] overflow-hidden">
-                 <div className="p-4 border-b border-white/10 bg-white/5">
+              <div className="glass-panel flex flex-col rounded-2xl shadow-lg h-[480px] overflow-hidden relative">
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00B25B]/5 rounded-full blur-[50px] pointer-events-none"></div>
+                 <div className="relative z-10 p-4 border-b border-white/10 bg-black/20">
                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] block">Alex — AI Analyst</span>
                    <h3 className="font-sans font-bold text-lg leading-tight mt-0.5 text-white">Tactical Desk</h3>
                  </div>
                  
-                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                 <div className="relative z-10 flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                    {chatHistory.length === 0 && (
                      <div className="space-y-3 mt-4">
                        <p className="text-[10px] uppercase font-bold tracking-widest text-white/30 text-center mb-3">Try asking:</p>
@@ -888,7 +929,7 @@ export default function App() {
                    )}
                  </div>
 
-                 <form onSubmit={handleChatSubmit} className="p-3 bg-white/5 border-t border-white/10">
+                 <form onSubmit={handleChatSubmit} className="relative z-10 p-3 bg-black/20 border-t border-white/10">
                    <div className="flex gap-2">
                      <input 
                        type="text" 
@@ -908,18 +949,59 @@ export default function App() {
                  </form>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </main>
       
       {/* Footer Bar */}
-      <footer className="bg-black/40 text-white/50 px-4 py-12 mt-auto text-center border-t border-white/10 backdrop-blur-md">
+      <footer className="bg-black/40 text-white/50 px-4 py-12 pb-24 md:pb-12 mt-auto text-center border-t border-white/10 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 mb-4 opacity-50">
           <Trophy size={16} className="text-white" />
         </div>
         <p className="text-[12px] uppercase tracking-widest mb-2 font-black text-white">WCForecaster<span className="text-[#00B25B]">.</span></p>
         <p className="text-[10px] uppercase tracking-widest text-white/40">Enterprise-Grade Match Predictions powered by Tactical AI</p>
       </footer>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0D1117]/90 backdrop-blur-2xl border-t border-white/10 pt-2 pb-safe">
+        <div className="flex justify-around items-center h-14">
+          {[
+            { id: 'matches', label: 'Matches', icon: Calendar },
+            { id: 'groups', label: 'Groups', icon: LayoutList },
+            { id: 'stats', label: 'Stats', icon: Trophy },
+            { id: 'insights', label: 'Insights', icon: LineChart }
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
+                  isActive ? 'text-[#00B25B]' : 'text-white/40 hover:text-white/70'
+                }`}
+              >
+                <motion.div
+                  animate={{ scale: isActive ? 1.1 : 1, y: isActive ? -2 : 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                >
+                  <Icon size={20} />
+                </motion.div>
+                <span className="text-[9px] font-bold uppercase tracking-widest">{tab.label}</span>
+                {isActive && (
+                  <motion.div 
+                    layoutId="mobileActiveTab"
+                    className="absolute top-0 left-1/2 w-8 h-[2px] bg-[#00B25B] -translate-x-1/2 rounded-full shadow-[0_0_8px_#00B25B]"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       {toast && (
         <div className="fixed top-24 right-4 sm:right-8 z-50 animate-in slide-in-from-right-8 fade-in duration-300">
