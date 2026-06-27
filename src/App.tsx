@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { INITIAL_MATCHES, GROUPS, TOP_SCORERS } from './data';
 import { MatchCard } from './components/MatchCard';
 import { GroupTable } from './components/GroupTable';
 import { Match, Group } from './types';
-import { Trophy, Calendar, LayoutList, LineChart, Send, Loader2, Bell, X, LogIn, LogOut } from 'lucide-react';
+import { Trophy, Calendar, LayoutList, LineChart, Send, Loader2, Bell, X, LogIn, LogOut, Share2 } from 'lucide-react';
 import { auth, db, googleProvider } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
 
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
+  const prevMatchesRef = useRef<Map<string, Match>>(new Map(INITIAL_MATCHES.map(m => [m.id, m])));
   const [groups, setGroups] = useState<Group[]>(GROUPS);
   const [topScorers, setTopScorers] = useState<any[]>(TOP_SCORERS);
   const [activeTab, setActiveTab] = useState<'matches' | 'groups' | 'stats' | 'insights'>('matches');
@@ -69,41 +70,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    const liveMatchIds = matches.filter(m => m.status === 'live').map(m => m.id);
-    if (liveMatchIds.length === 0) return;
-
-    const interval = setInterval(() => {
-      if (Math.random() > 0.75) { // 25% chance every 10 seconds
-        const randomMatchId = liveMatchIds[Math.floor(Math.random() * liveMatchIds.length)];
-        const match = matches.find(m => m.id === randomMatchId);
-        if (!match) return;
-
-        const isGoal = Math.random() > 0.5;
-        const scoringTeam = Math.random() > 0.5 ? match.teamA.name : match.teamB.name;
-        
-        const event = {
-          id: Date.now().toString(),
-          type: (isGoal ? 'goal' : 'event') as 'goal' | 'event',
-          title: isGoal ? `GOAL! ${scoringTeam}` : `Major Event`,
-          message: isGoal 
-            ? `${scoringTeam} scores against ${scoringTeam === match.teamA.name ? match.teamB.name : match.teamA.name}!` 
-            : `VAR check in progress for ${match.teamA.name} vs ${match.teamB.name}`
-        };
-
-        setToast(event);
-
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(event.title, { body: event.message });
-        }
-
-        setTimeout(() => setToast(null), 6000);
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [matches]);
-
-  useEffect(() => {
     const fetchLiveData = async () => {
       try {
         const [matchesRes, standingsRes, scorersRes] = await Promise.all([
@@ -148,6 +114,68 @@ export default function App() {
                 status: status as 'upcoming' | 'live' | 'finished',
               };
             });
+
+            // Handle real-time notifications
+            mappedMatches.forEach(m => {
+              const existing = prevMatchesRef.current.get(m.id);
+              if (existing) {
+                if (existing.status === 'live' || m.status === 'live') {
+                  if (existing.scoreA !== undefined && m.scoreA !== undefined && m.scoreA > existing.scoreA) {
+                    const event = {
+                      id: Date.now().toString() + 'A',
+                      type: 'goal' as 'goal' | 'event',
+                      title: `GOAL! ${m.teamA.name}`,
+                      message: `${m.teamA.name} scores against ${m.teamB.name}! (${m.scoreA} - ${m.scoreB})`
+                    };
+                    setToast(event);
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                      new Notification(event.title, { body: event.message });
+                    }
+                    setTimeout(() => setToast(null), 6000);
+                  } else if (existing.scoreB !== undefined && m.scoreB !== undefined && m.scoreB > existing.scoreB) {
+                    const event = {
+                      id: Date.now().toString() + 'B',
+                      type: 'goal' as 'goal' | 'event',
+                      title: `GOAL! ${m.teamB.name}`,
+                      message: `${m.teamB.name} scores against ${m.teamA.name}! (${m.scoreA} - ${m.scoreB})`
+                    };
+                    setToast(event);
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                      new Notification(event.title, { body: event.message });
+                    }
+                    setTimeout(() => setToast(null), 6000);
+                  } else if (existing.status === 'upcoming' && m.status === 'live') {
+                    const event = {
+                      id: Date.now().toString() + 'K',
+                      type: 'event' as 'goal' | 'event',
+                      title: `KICKOFF`,
+                      message: `${m.teamA.name} vs ${m.teamB.name} has started!`
+                    };
+                    setToast(event);
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                      new Notification(event.title, { body: event.message });
+                    }
+                    setTimeout(() => setToast(null), 6000);
+                  } else if (existing.status === 'live' && m.status === 'finished') {
+                    const event = {
+                      id: Date.now().toString() + 'F',
+                      type: 'event' as 'goal' | 'event',
+                      title: `FULL TIME`,
+                      message: `${m.teamA.name} ${m.scoreA} - ${m.scoreB} ${m.teamB.name}`
+                    };
+                    setToast(event);
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                      new Notification(event.title, { body: event.message });
+                    }
+                    setTimeout(() => setToast(null), 6000);
+                  }
+                }
+              }
+            });
+
+            // Update ref with latest map
+            prevMatchesRef.current = new Map(mappedMatches.map(m => [m.id, m]));
+
             setMatches(prev => {
               const prevMap = new Map<string, Match>(prev.map(p => [p.id, p]));
               return mappedMatches.map(m => {
@@ -319,16 +347,56 @@ export default function App() {
     }
   };
 
+  const handleSharePredictions = async () => {
+    const predictedMatches = matches.filter(m => m.userPrediction);
+    if (predictedMatches.length === 0) {
+      setToast({
+        id: Date.now().toString(),
+        type: 'event',
+        title: 'No Predictions',
+        message: 'You have not made any predictions yet.'
+      });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    let text = "My World Cup Forecasts 🏆⚽\n\n";
+    predictedMatches.forEach(m => {
+      text += `${m.teamA.name} ${m.userPrediction!.scoreA} - ${m.userPrediction!.scoreB} ${m.teamB.name}\n`;
+    });
+    text += "\nMade on WCForecaster.";
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'My World Cup Forecasts',
+          text: text,
+        });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setToast({
+          id: Date.now().toString(),
+          type: 'event',
+          title: 'Copied!',
+          message: 'Predictions copied to clipboard.'
+        });
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
   const liveMatches = matches.filter(m => m.status === 'live');
   const upcomingMatches = matches.filter(m => m.status === 'upcoming').sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5);
   const finishedMatches = matches.filter(m => m.status === 'finished').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-[#F4F1EA] text-[#1A1A1A] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0D1117] text-[#1A1A1A] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={32} className="animate-spin text-[#00B25B]" />
-          <p className="text-[10px] uppercase font-bold tracking-widest">Loading Desk...</p>
+          <p className="text-[10px] uppercase font-bold tracking-widest text-white/50">Loading Desk...</p>
         </div>
       </div>
     );
@@ -336,28 +404,35 @@ export default function App() {
 
   if (!user && !isGuest) {
     return (
-      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center p-4">
-        <div className="bg-white p-8 max-w-sm w-full border-2 border-[#1A1A1A] shadow-[8px_8px_0px_#00B25B] flex flex-col items-center text-center">
-          <div className="bg-[#00B25B] p-3 rounded-sm mb-6">
-            <Trophy size={32} className="text-[#1A1A1A]" />
+      <div className="min-h-screen bg-[#0D1117] relative flex items-center justify-center p-4 overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,178,91,0.15),transparent_50%)]"></div>
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00B25B]/50 to-transparent"></div>
+        <div className="absolute -inset-[100%] opacity-20">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+        </div>
+
+        <div className="bg-black/40 backdrop-blur-2xl p-8 max-w-sm w-full border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center text-center relative z-10">
+          <div className="w-24 h-24 rounded-full overflow-hidden shadow-2xl shadow-[#00B25B]/30 border-2 border-[#00B25B] mb-6 transform hover:scale-105 transition-transform duration-500">
+            <img src="/logo.jpg" alt="WC Forecaster Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="font-sans font-black text-3xl tracking-tighter uppercase leading-none mb-2 text-[#1A1A1A]">
+          <h1 className="font-sans font-black text-3xl tracking-tighter uppercase leading-none mb-2 text-white">
             WCForecaster<span className="text-[#00B25B]">.</span>
           </h1>
-          <p className="text-[12px] uppercase font-bold tracking-widest text-slate-500 mb-8">
+          <p className="text-[12px] uppercase font-bold tracking-widest text-white/50 mb-8">
             Tactical Analysis & Predictions
           </p>
           
           <div className="flex flex-col gap-4 w-full">
             <button 
               onClick={() => signInWithPopup(auth, googleProvider)}
-              className="w-full bg-[#1A1A1A] text-white py-3 px-4 font-black text-sm uppercase tracking-widest hover:bg-black transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[#00B25B] text-white py-3 px-4 font-bold text-sm uppercase tracking-widest hover:bg-[#00904a] transition-all rounded-xl shadow-lg shadow-[#00B25B]/20 flex items-center justify-center gap-2"
             >
               <LogIn size={18} /> Sign In to Forecast
             </button>
             <button 
               onClick={() => setIsGuest(true)}
-              className="w-full bg-white text-[#1A1A1A] border-2 border-[#1A1A1A] py-3 px-4 font-black text-sm uppercase tracking-widest hover:bg-[#F4F1EA] transition-colors"
+              className="w-full bg-white/5 text-white/80 border border-white/10 py-3 px-4 font-bold text-sm uppercase tracking-widest hover:bg-white/10 hover:text-white rounded-xl transition-all"
             >
               Continue as Guest
             </button>
@@ -368,22 +443,29 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F1EA] text-[#1A1A1A] font-sans flex flex-col">
-      {/* Top Bar (Editorial x FotMob) */}
-      <header className="bg-[#1A1A1A] text-white sticky top-0 z-20 shadow-md">
+    <div className="min-h-screen bg-[#0D1117] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#132A1C] via-[#0D1117] to-[#0D1117] text-slate-200 font-sans flex flex-col">
+      {/* Top Bar (Glassmorphism FotMob style) */}
+      <header className="sticky top-0 z-20 bg-[#0D1117]/80 backdrop-blur-xl border-b border-white/10 shadow-md">
         <div className="px-4 py-4 flex justify-between items-center max-w-5xl mx-auto w-full">
-          <div className="flex items-center gap-2">
-            <div className="bg-[#00B25B] p-1.5 rounded-sm">
-              <Trophy size={18} className="text-[#1A1A1A]" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg shadow-[#00B25B]/20 border-2 border-[#00B25B]">
+              <img src="/logo.jpg" alt="WC Forecaster Logo" className="w-full h-full object-cover" />
             </div>
-            <h1 className="font-sans font-black text-2xl tracking-tighter uppercase leading-none mt-1">
+            <h1 className="font-sans font-black text-2xl tracking-tighter uppercase leading-none mt-1 text-white">
               WCForecaster<span className="text-[#00B25B]">.</span>
             </h1>
           </div>
           <div className="flex items-center gap-4">
             <button 
+              onClick={handleSharePredictions}
+              className="p-1.5 rounded-lg transition-all text-[#00B25B] bg-[#00B25B]/10 hover:bg-[#00B25B]/20"
+              title="Share My Predictions"
+            >
+              <Share2 size={18} />
+            </button>
+            <button 
               onClick={requestNotificationPermission}
-              className={`p-1.5 transition-colors ${notificationPermission === 'granted' ? 'text-[#00B25B]' : 'text-white/50 hover:text-white'}`}
+              className={`p-1.5 rounded-lg transition-all ${notificationPermission === 'granted' ? 'text-[#00B25B] bg-[#00B25B]/10' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
               title={notificationPermission === 'granted' ? "Notifications Enabled" : "Enable Notifications"}
             >
               <Bell size={18} />
@@ -392,12 +474,12 @@ export default function App() {
               {user ? (
                 <>
                   <p className="text-[9px] uppercase tracking-widest text-[#00B25B] font-bold">Welcome,</p>
-                  <p className="text-[12px] font-mono font-bold truncate max-w-[100px]">{user.displayName || 'Forecaster'}</p>
+                  <p className="text-[12px] font-mono font-bold text-white truncate max-w-[100px]">{user.displayName || 'Forecaster'}</p>
                 </>
               ) : (
                 <>
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Access</p>
-                  <p className="text-[12px] font-mono font-bold">Guest Mode</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Access</p>
+                  <p className="text-[12px] font-mono font-bold text-white/80">Guest Mode</p>
                 </>
               )}
             </div>
@@ -407,14 +489,14 @@ export default function App() {
                   signOut(auth);
                   setIsGuest(false);
                 }}
-                className="bg-[#1A1A1A] text-white/80 hover:text-white px-3 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-sm border border-white/20 transition-colors flex items-center gap-1"
+                className="bg-white/5 text-white/80 hover:text-white hover:bg-white/10 px-3 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-white/10 transition-all flex items-center gap-1"
               >
                 <LogOut size={14} /> <span className="hidden sm:inline">Logout</span>
               </button>
             ) : (
               <button 
                 onClick={() => signInWithPopup(auth, googleProvider)}
-                className="bg-[#00B25B] text-[#1A1A1A] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-sm border border-transparent hover:bg-[#00904a] transition-colors flex items-center gap-1"
+                className="bg-gradient-to-br from-[#00B25B] to-[#00904a] text-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg border border-white/10 hover:shadow-lg hover:shadow-[#00B25B]/20 transition-all flex items-center gap-1"
               >
                 <LogIn size={14} /> <span className="hidden sm:inline">Sign In</span>
               </button>
@@ -423,7 +505,7 @@ export default function App() {
         </div>
         
         {/* FotMob Style Sub-nav */}
-        <nav className="flex overflow-x-auto max-w-5xl mx-auto w-full px-2 border-t border-white/10 hide-scrollbar">
+        <nav className="flex overflow-x-auto max-w-5xl mx-auto w-full px-2 border-t border-white/10 hide-scrollbar pt-2 pb-2">
           {[
             { id: 'matches', label: 'Matches', icon: Calendar },
             { id: 'groups', label: 'Groups', icon: LayoutList },
@@ -454,11 +536,11 @@ export default function App() {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {liveMatches.length > 0 && (
               <section>
-                <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 flex items-center gap-2 text-[#00B25B]">
-                  <span className="w-2 h-2 bg-[#00B25B] rounded-full animate-pulse"></span>
+                <h2 className="text-[11px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 text-[#00B25B]">
+                  <span className="w-2 h-2 bg-[#00B25B] rounded-full animate-pulse shadow-[0_0_8px_#00B25B]"></span>
                   Live Now
                 </h2>
-                <div className="bg-white border-y sm:border-2 border-[#1A1A1A] sm:shadow-[4px_4px_0px_#1A1A1A] flex flex-col rounded-sm">
+                <div className="flex flex-col">
                   {liveMatches.map(match => (
                     <MatchCard key={match.id} match={match} onPredict={handlePredict} onGetAiInsight={handleGetAiInsight} />
                   ))}
@@ -468,10 +550,10 @@ export default function App() {
 
             {upcomingMatches.length > 0 && (
               <section>
-                <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 text-[#1A1A1A]">
+                <h2 className="text-[11px] font-bold uppercase tracking-widest mb-3 text-white/70">
                   Upcoming Fixtures
                 </h2>
-                <div className="bg-white border-y sm:border-2 border-[#1A1A1A] sm:shadow-[4px_4px_0px_#1A1A1A] flex flex-col rounded-sm">
+                <div className="flex flex-col">
                   {upcomingMatches.map(match => (
                     <MatchCard key={match.id} match={match} onPredict={handlePredict} onGetAiInsight={handleGetAiInsight} />
                   ))}
@@ -481,10 +563,10 @@ export default function App() {
 
             {finishedMatches.length > 0 && (
               <section>
-                <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 text-slate-500">
+                <h2 className="text-[11px] font-bold uppercase tracking-widest mb-3 text-white/50">
                   Recent Results
                 </h2>
-                <div className="bg-white border-y sm:border-2 border-[#1A1A1A] sm:shadow-[4px_4px_0px_#1A1A1A] flex flex-col opacity-80 rounded-sm">
+                <div className="flex flex-col opacity-80">
                   {finishedMatches.map(match => (
                     <MatchCard key={match.id} match={match} onPredict={handlePredict} onGetAiInsight={handleGetAiInsight} />
                   ))}
@@ -496,9 +578,9 @@ export default function App() {
 
         {activeTab === 'groups' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-6 flex justify-between items-end border-b-2 border-[#1A1A1A] pb-2">
-              <h2 className="font-serif italic font-black text-3xl">Standings</h2>
-              <span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Updated Live</span>
+            <div className="mb-6 flex justify-between items-end border-b border-white/10 pb-3">
+              <h2 className="font-sans font-bold text-2xl text-white">Standings</h2>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Updated Live</span>
             </div>
             {groups.map(group => (
               <GroupTable key={group.name} group={group} />
@@ -509,41 +591,41 @@ export default function App() {
         {activeTab === 'stats' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
             <section>
-              <div className="mb-6 border-b-2 border-[#1A1A1A] pb-2">
-                <h2 className="font-serif italic font-black text-3xl">Player Stats</h2>
-                <p className="text-[12px] uppercase font-bold tracking-widest mt-1 opacity-60">Golden Boot Race</p>
+              <div className="mb-6 border-b border-white/10 pb-3">
+                <h2 className="font-sans font-bold text-2xl text-white">Player Stats</h2>
+                <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Golden Boot Race</p>
               </div>
-              <div className="bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] overflow-hidden">
-                <div className="bg-[#1A1A1A] text-white px-4 py-3">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+                <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3">
                   <h3 className="font-bold uppercase text-[12px] tracking-widest">Top Scorers</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse min-w-[500px]">
                     <thead>
-                      <tr className="bg-[#F4F1EA] text-[#1A1A1A] text-[10px] uppercase tracking-widest border-b border-[#1A1A1A]">
-                        <th className="px-4 py-2 w-12 text-center">#</th>
-                        <th className="px-4 py-2">Player</th>
-                        <th className="px-4 py-2 text-center">Matches</th>
-                        <th className="px-4 py-2 text-center font-black">Goals</th>
-                        <th className="px-4 py-2 text-center">Assists</th>
+                      <tr className="bg-black/20 text-white/50 text-[10px] uppercase tracking-widest border-b border-white/10">
+                        <th className="px-4 py-3 w-12 text-center">#</th>
+                        <th className="px-4 py-3">Player</th>
+                        <th className="px-4 py-3 text-center">Matches</th>
+                        <th className="px-4 py-3 text-center font-black text-white/80">Goals</th>
+                        <th className="px-4 py-3 text-center">Assists</th>
                       </tr>
                     </thead>
-                    <tbody className="text-sm font-sans font-medium text-[#1A1A1A]">
+                    <tbody className="text-sm font-sans font-medium text-white">
                       {topScorers.map((player, idx) => (
-                        <tr key={player.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors last:border-b-0">
-                          <td className="px-4 py-4 text-center text-xs font-mono">{idx + 1}</td>
+                        <tr key={player.id} className="border-b border-white/5 hover:bg-white/5 transition-colors last:border-b-0">
+                          <td className="px-4 py-4 text-center text-xs font-mono text-white/50">{idx + 1}</td>
                           <td className="px-4 py-4 flex items-center gap-3">
-                            <span className="text-2xl flex items-center justify-center w-8 h-8">
+                            <span className="text-2xl flex items-center justify-center w-8 h-8 drop-shadow-md bg-white/10 rounded-full p-1 border border-white/10">
                               {player.team.flag?.startsWith('http') ? <img src={player.team.flag} alt={player.team.name} className="w-6 h-6 object-contain" /> : player.team.flag}
                             </span>
                             <div>
                               <div className="font-bold">{player.name}</div>
-                              <div className="text-[10px] uppercase tracking-widest opacity-60 mt-0.5">{player.team.name}</div>
+                              <div className="text-[10px] uppercase tracking-widest text-white/50 mt-0.5">{player.team.name}</div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">{player.matches}</td>
-                          <td className="px-4 py-4 text-center font-black text-lg">{player.goals}</td>
-                          <td className="px-4 py-4 text-center">{player.assists}</td>
+                          <td className="px-4 py-4 text-center text-white/70">{player.matches}</td>
+                          <td className="px-4 py-4 text-center font-black text-lg text-white">{player.goals}</td>
+                          <td className="px-4 py-4 text-center text-white/70">{player.assists}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -553,16 +635,16 @@ export default function App() {
             </section>
             
             <section>
-              <div className="mb-6 border-b-2 border-[#1A1A1A] pb-2">
-                <h2 className="font-serif italic font-black text-3xl">Team Stats</h2>
-                <p className="text-[12px] uppercase font-bold tracking-widest mt-1 opacity-60">Tournament Leaders</p>
+              <div className="mb-6 border-b border-white/10 pb-3">
+                <h2 className="font-sans font-bold text-2xl text-white">Team Stats</h2>
+                <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Tournament Leaders</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] flex flex-col">
-                  <div className="bg-[#1A1A1A] text-white px-4 py-3">
+                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-lg">
+                  <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3">
                     <h3 className="font-bold uppercase text-[12px] tracking-widest">Most Goals Scored</h3>
                   </div>
-                  <div className="p-4 flex-1">
+                  <div className="p-4 flex-1 text-white">
                     {[
                       { team: 'France', goals: 12, flag: '🇫🇷' },
                       { team: 'England', goals: 10, flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
@@ -570,10 +652,10 @@ export default function App() {
                       { team: 'Spain', goals: 8, flag: '🇪🇸' },
                       { team: 'Argentina', goals: 7, flag: '🇦🇷' },
                     ].map((t, idx) => (
-                      <div key={t.team} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-b-0">
+                      <div key={t.team} className="flex justify-between items-center py-3 border-b border-white/5 last:border-b-0">
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs opacity-50 w-4">{idx + 1}</span>
-                          <span>{t.flag}</span>
+                          <span className="font-mono text-xs text-white/50 w-4">{idx + 1}</span>
+                          <span className="drop-shadow-md bg-white/10 rounded-full w-6 h-6 flex items-center justify-center text-xs">{t.flag}</span>
                           <span className="font-bold">{t.team}</span>
                         </div>
                         <span className="font-black text-lg">{t.goals}</span>
@@ -582,11 +664,11 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-white border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] flex flex-col">
-                  <div className="bg-[#1A1A1A] text-white px-4 py-3">
+                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-lg">
+                  <div className="bg-white/5 border-b border-white/10 text-white px-4 py-3">
                     <h3 className="font-bold uppercase text-[12px] tracking-widest">Clean Sheets</h3>
                   </div>
-                  <div className="p-4 flex-1">
+                  <div className="p-4 flex-1 text-white">
                     {[
                       { team: 'Morocco', cs: 4, flag: '🇲🇦' },
                       { team: 'Brazil', cs: 3, flag: '🇧🇷' },
@@ -594,10 +676,10 @@ export default function App() {
                       { team: 'USA', cs: 2, flag: '🇺🇸' },
                       { team: 'Japan', cs: 2, flag: '🇯🇵' },
                     ].map((t, idx) => (
-                      <div key={t.team} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-b-0">
+                      <div key={t.team} className="flex justify-between items-center py-3 border-b border-white/5 last:border-b-0">
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs opacity-50 w-4">{idx + 1}</span>
-                          <span>{t.flag}</span>
+                          <span className="font-mono text-xs text-white/50 w-4">{idx + 1}</span>
+                          <span className="drop-shadow-md bg-white/10 rounded-full w-6 h-6 flex items-center justify-center text-xs">{t.flag}</span>
                           <span className="font-bold">{t.team}</span>
                         </div>
                         <span className="font-black text-lg">{t.cs}</span>
@@ -612,18 +694,18 @@ export default function App() {
 
         {activeTab === 'insights' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-6 border-b-2 border-[#1A1A1A] pb-2">
-              <h2 className="font-serif italic font-black text-3xl">AI Tactical Desk</h2>
-              <p className="text-[12px] uppercase font-bold tracking-widest mt-1 opacity-60">Powered by Data Science Models</p>
+            <div className="mb-6 border-b border-white/10 pb-3">
+              <h2 className="font-sans font-bold text-2xl text-white">AI Tactical Desk</h2>
+              <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Powered by Data Science Models</p>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* ML Win Probability Model */}
-              <div className="bg-white p-6 border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] flex flex-col">
+              <div className="bg-white/5 backdrop-blur-md p-6 border border-white/10 rounded-2xl shadow-lg flex flex-col">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] mb-2 block flex items-center gap-1">
                   <LineChart size={12}/> Tournament Win Probability
                 </span>
-                <h3 className="font-serif italic text-xl mb-4 leading-tight">Latest Monte Carlo Simulations</h3>
+                <h3 className="font-sans font-bold text-xl mb-4 leading-tight text-white">Latest Monte Carlo Simulations</h3>
                 
                 <div className="space-y-4 flex-1">
                   {[
@@ -634,44 +716,47 @@ export default function App() {
                     { team: 'Argentina', prob: 9.8, flag: '🇦🇷' },
                   ].map((data, i) => (
                     <div key={data.team} className="group">
-                      <div className="flex justify-between text-[11px] font-bold uppercase tracking-widest mb-1">
-                        <span>{data.flag} {data.team}</span>
-                        <span className="font-mono">{data.prob}%</span>
+                      <div className="flex justify-between text-[11px] font-bold uppercase tracking-widest mb-1 text-white">
+                        <span className="flex items-center gap-2">
+                          <span className="drop-shadow-md bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{data.flag}</span>
+                          {data.team}
+                        </span>
+                        <span className="font-mono text-white/80">{data.prob}%</span>
                       </div>
-                      <div className="w-full h-2 bg-[#F4F1EA] rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full transition-all duration-1000 ease-out ${i === 0 ? 'bg-[#00B25B]' : 'bg-[#1A1A1A]'}`}
+                          className={`h-full transition-all duration-1000 ease-out ${i === 0 ? 'bg-gradient-to-r from-[#00B25B] to-[#00904a] shadow-[0_0_8px_#00B25B]' : 'bg-white/30'}`}
                           style={{ width: `${(data.prob / 25) * 100}%` }}
                         ></div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-6 pt-4 border-t-2 border-dashed border-[#1A1A1A]">
-                  <p className="text-[10px] font-mono text-slate-500">Based on 10,000 tournament simulations incorporating current standings, xG, and squad injuries.</p>
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <p className="text-[10px] font-mono text-white/40">Based on 10,000 tournament simulations incorporating current standings, xG, and squad injuries.</p>
                 </div>
               </div>
 
               {/* Tactical AI Chat */}
-              <div className="bg-[#1A1A1A] text-white flex flex-col border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#00B25B] h-[400px]">
-                 <div className="p-4 border-b border-white/20 bg-white/5">
+              <div className="bg-black/40 backdrop-blur-xl text-white flex flex-col border border-white/10 rounded-2xl shadow-lg h-[400px] overflow-hidden">
+                 <div className="p-4 border-b border-white/10 bg-white/5">
                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] block">Interactive Analyst</span>
-                   <h3 className="font-serif italic text-lg leading-tight mt-1">Ask the AI Tactician</h3>
+                   <h3 className="font-sans font-bold text-lg leading-tight mt-1 text-white">Ask the AI Tactician</h3>
                  </div>
                  
                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                    {chatHistory.length === 0 && (
                      <div className="text-center opacity-50 mt-10">
-                       <p className="font-serif italic text-lg mb-2">"How will the USA line up?"</p>
-                       <p className="text-[10px] uppercase font-bold tracking-widest">Ask about tactics, xG, or matchups</p>
+                       <p className="font-serif italic text-lg mb-2 text-white/80">"How will the USA line up?"</p>
+                       <p className="text-[10px] uppercase font-bold tracking-widest text-white/50">Ask about tactics, xG, or matchups</p>
                      </div>
                    )}
                    {chatHistory.map((msg, idx) => (
                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                        <div className={`max-w-[85%] p-3 text-sm ${
                          msg.role === 'user' 
-                           ? 'bg-[#00B25B] text-[#1A1A1A] font-medium rounded-l-md rounded-tr-md' 
-                           : 'bg-white/10 text-white font-serif italic rounded-r-md rounded-tl-md border border-white/10'
+                           ? 'bg-gradient-to-br from-[#00B25B] to-[#00904a] text-white font-medium rounded-2xl rounded-tr-sm shadow-md' 
+                           : 'bg-white/10 text-white/90 rounded-2xl rounded-tl-sm border border-white/10'
                        }`}>
                          {msg.text}
                        </div>
@@ -679,26 +764,26 @@ export default function App() {
                    ))}
                    {isChatLoading && (
                      <div className="flex justify-start">
-                       <div className="max-w-[85%] p-3 text-sm bg-white/10 text-[#00B25B] rounded-r-md rounded-tl-md border border-white/10 flex items-center gap-2">
+                       <div className="max-w-[85%] p-3 text-sm bg-white/10 text-[#00B25B] rounded-2xl rounded-tl-sm border border-white/10 flex items-center gap-2">
                          <Loader2 size={14} className="animate-spin" /> <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Analyzing data...</span>
                        </div>
                      </div>
                    )}
                  </div>
 
-                 <form onSubmit={handleChatSubmit} className="p-3 bg-black">
+                 <form onSubmit={handleChatSubmit} className="p-3 bg-white/5 border-t border-white/10">
                    <div className="flex gap-2 relative">
                      <input 
                        type="text" 
                        value={chatInput}
                        onChange={e => setChatInput(e.target.value)}
                        placeholder="Ask about team tactics..."
-                       className="flex-1 bg-white/10 text-white placeholder-white/30 px-4 py-3 text-sm focus:outline-none focus:bg-white/20 transition-colors rounded-sm"
+                       className="flex-1 bg-black/30 text-white placeholder-white/30 px-4 py-3 text-sm focus:outline-none focus:bg-black/50 border border-white/10 focus:border-[#00B25B]/50 transition-all rounded-xl"
                      />
                      <button 
                        type="submit" 
                        disabled={isChatLoading || !chatInput.trim()}
-                       className="bg-[#00B25B] text-[#1A1A1A] px-4 py-3 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-sm"
+                       className="bg-gradient-to-br from-[#00B25B] to-[#00904a] text-white px-4 py-3 hover:shadow-[0_0_15px_rgba(0,178,91,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
                      >
                        <Send size={16} className="transform -translate-y-px translate-x-px" />
                      </button>
@@ -711,25 +796,25 @@ export default function App() {
       </main>
       
       {/* Footer Bar */}
-      <footer className="bg-[#1A1A1A] text-white/50 px-4 py-12 mt-auto text-center border-t border-[#1A1A1A]">
+      <footer className="bg-black/40 text-white/50 px-4 py-12 mt-auto text-center border-t border-white/10 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 mb-4 opacity-50">
-          <Trophy size={16} />
+          <Trophy size={16} className="text-white" />
         </div>
         <p className="text-[12px] uppercase tracking-widest mb-2 font-black text-white">WCForecaster<span className="text-[#00B25B]">.</span></p>
-        <p className="text-[10px] uppercase tracking-widest opacity-60">Enterprise-Grade Match Predictions powered by Tactical AI</p>
+        <p className="text-[10px] uppercase tracking-widest text-white/40">Enterprise-Grade Match Predictions powered by Tactical AI</p>
       </footer>
 
       {toast && (
         <div className="fixed top-24 right-4 sm:right-8 z-50 animate-in slide-in-from-right-8 fade-in duration-300">
-          <div className={`bg-white border-2 border-[#1A1A1A] p-4 shadow-[4px_4px_0px_#1A1A1A] flex items-start gap-4 max-w-sm ${toast.type === 'goal' ? 'border-l-4 border-l-[#00B25B]' : ''}`}>
+          <div className={`bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-xl shadow-2xl flex items-start gap-4 max-w-sm ${toast.type === 'goal' ? 'border-l-4 border-l-[#00B25B]' : ''}`}>
              <div className="flex-1">
                <div className="flex items-center gap-2 mb-1">
-                 {toast.type === 'goal' && <span className="bg-[#00B25B] w-2 h-2 rounded-full animate-pulse"></span>}
-                 <h4 className="text-[10px] font-black uppercase tracking-widest text-[#1A1A1A]">{toast.title}</h4>
+                 {toast.type === 'goal' && <span className="bg-[#00B25B] w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_#00B25B]"></span>}
+                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-white">{toast.title}</h4>
                </div>
-               <p className="text-sm font-sans font-medium text-[#1A1A1A]/80">{toast.message}</p>
+               <p className="text-sm font-sans font-medium text-white/80">{toast.message}</p>
              </div>
-             <button onClick={() => setToast(null)} className="text-slate-400 hover:text-[#1A1A1A] transition-colors mt-1">
+             <button onClick={() => setToast(null)} className="text-white/40 hover:text-white transition-colors mt-1">
                <X size={14} />
              </button>
           </div>
