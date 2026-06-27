@@ -206,15 +206,25 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
                   {/* AI Tactical Box */}
                   <div className="flex-1 bg-black/40 backdrop-blur-xl p-5 sm:p-6 border border-white/10 rounded-2xl shadow-lg flex flex-col">
                     <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
-                      <h4 className="text-[11px] uppercase tracking-widest font-bold text-[#00B25B]">
-                        Tactical Desk
-                      </h4>
+                      <div>
+                        <h4 className="text-[11px] uppercase tracking-widest font-bold text-[#00B25B]">
+                          Alex — Tactical Desk
+                        </h4>
+                        {match.aiConfidence && (
+                          <span className={`text-[9px] uppercase font-bold tracking-widest ${
+                            match.aiConfidence === 'high' ? 'text-[#00B25B]' :
+                            match.aiConfidence === 'medium' ? 'text-yellow-400' : 'text-white/40'
+                          }`}>
+                            {match.aiConfidence} confidence
+                          </span>
+                        )}
+                      </div>
                       {!match.aiPrediction && !match.isAiLoading && (
                         <button 
                           onClick={handleAiClick}
                           className="text-[10px] font-bold uppercase hover:text-[#00B25B] transition-colors border border-white/20 px-2 py-1 rounded bg-white/5"
                         >
-                          Request Analysis
+                          Get Analysis
                         </button>
                       )}
                     </div>
@@ -222,18 +232,45 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
                     {match.isAiLoading ? (
                       <div className="flex-1 flex flex-col items-center justify-center py-6 text-[#00B25B]">
                         <Loader2 size={24} className="animate-spin mb-2" />
-                        <span className="font-mono text-[10px] uppercase font-bold mt-2">Consulting Opta Data...</span>
+                        <span className="font-mono text-[10px] uppercase font-bold mt-2">Consulting squad data...</span>
                       </div>
                     ) : match.aiPrediction ? (
-                      <p className="font-serif italic text-base sm:text-lg leading-snug text-white/90">
-                        "{match.aiPrediction}"
-                      </p>
+                      <div className="space-y-4 flex-1">
+                        {/* AI Score Prediction */}
+                        {match.aiScoreA !== undefined && match.aiScoreB !== undefined && (
+                          <div className="flex items-center justify-center gap-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                            <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">AI Prediction</span>
+                            <span className="font-black text-2xl text-[#00B25B] font-mono tabular-nums">
+                              {match.aiScoreA} – {match.aiScoreB}
+                            </span>
+                          </div>
+                        )}
+                        {/* Tactical Analysis */}
+                        <p className="font-serif italic text-sm sm:text-base leading-snug text-white/85">
+                          "{match.aiPrediction}"
+                        </p>
+                        {/* Key Battle */}
+                        {match.aiKeyBattle && (
+                          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-[#00B25B] block mb-1">⚔ Key Battle</span>
+                            <p className="text-xs text-white/80 font-medium">{match.aiKeyBattle}</p>
+                          </div>
+                        )}
+                        {/* xG Projection */}
+                        {match.aiXGProjection && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">xG</span>
+                            <span className="text-[11px] font-mono font-bold text-white/70">{match.aiXGProjection}</span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex-1 flex flex-col justify-center items-center opacity-70 py-6 text-center">
                          <PlayCircle size={32} className="mb-3 opacity-50 text-white" />
                          <p className="text-[11px] font-bold uppercase cursor-pointer hover:text-[#00B25B] transition-colors" onClick={handleAiClick}>
-                           Generate match insight
+                           Get tactical analysis
                          </p>
+                         <p className="text-[9px] uppercase tracking-widest text-white/40 mt-1">xG · key battle · score prediction</p>
                       </div>
                     )}
                   </div>

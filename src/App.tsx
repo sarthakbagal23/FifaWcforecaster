@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { INITIAL_MATCHES, GROUPS, TOP_SCORERS } from './data';
 import { MatchCard } from './components/MatchCard';
 import { GroupTable } from './components/GroupTable';
-import { Match, Group } from './types';
+import { Match, Group, WinProbabilityEntry, WinProbabilityResult } from './types';
 import { Trophy, Calendar, LayoutList, LineChart, Send, Loader2, Bell, X, LogIn, LogOut, Share2 } from 'lucide-react';
 import { auth, db, googleProvider } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -17,6 +17,11 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+
+  // Win Probability State (replaces hardcoded Insights data)
+  const [winProb, setWinProb] = useState<WinProbabilityEntry[]>([]);
+  const [winProbLoading, setWinProbLoading] = useState(false);
+  const [winProbMethodology, setWinProbMethodology] = useState('');
 
   // Tactical Chat State
   const [chatInput, setChatInput] = useState('');
@@ -181,7 +186,18 @@ export default function App() {
               return mappedMatches.map(m => {
                 const existing = prevMap.get(m.id);
                 if (existing) {
-                  return { ...m, userPrediction: existing.userPrediction, aiPrediction: existing.aiPrediction, isAiLoading: existing.isAiLoading, lineups: existing.lineups };
+                  return { 
+                    ...m, 
+                    userPrediction: existing.userPrediction, 
+                    aiPrediction: existing.aiPrediction, 
+                    aiScoreA: existing.aiScoreA,
+                    aiScoreB: existing.aiScoreB,
+                    aiKeyBattle: existing.aiKeyBattle,
+                    aiXGProjection: existing.aiXGProjection,
+                    aiConfidence: existing.aiConfidence,
+                    isAiLoading: existing.isAiLoading, 
+                    lineups: existing.lineups 
+                  };
                 }
                 return m;
               });
@@ -308,7 +324,17 @@ export default function App() {
       });
       const data = await response.json();
       setMatches(prev => prev.map(m => 
-        m.id === matchId ? { ...m, isAiLoading: false, aiPrediction: data.analysis || data.error || "Tactical brief unavailable.", aiScoreA: data.scoreA, aiScoreB: data.scoreB } : m
+        m.id === matchId ? { 
+          ...m, 
+          isAiLoading: false, 
+          aiPrediction: data.analysis || data.error || "Tactical brief unavailable.",
+          aiScoreA: data.scoreA,
+          aiScoreB: data.scoreB,
+          // New richer fields from improved prompt
+          aiKeyBattle: data.keyBattle,
+          aiXGProjection: data.xGProjection,
+          aiConfidence: data.confidence,
+        } : m
       ));
     } catch (error) {
       console.error(error);
@@ -328,13 +354,14 @@ export default function App() {
     setIsChatLoading(true);
 
     try {
-      // Build a light context from matches
-      const context = matches.filter(m => m.status !== 'upcoming').slice(0, 5).map(m => `${m.teamA.name} ${m.scoreA}-${m.scoreB} ${m.teamB.name}`).join(', ');
+      // Build context from all completed matches
+      const context = matches.filter(m => m.status !== 'upcoming').map(m => `${m.teamA.name} ${m.scoreA}-${m.scoreB} ${m.teamB.name}`).join(', ');
       
       const response = await fetch('/api/tactical-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: chatInput, context })
+        // Pass full history so the AI has multi-turn context
+        body: JSON.stringify({ prompt: chatInput, context, history: chatHistory })
       });
       const data = await response.json();
       
@@ -384,6 +411,32 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error sharing:', err);
+    }
+  };
+
+  const fetchWinProbabilities = async () => {
+    setWinProbLoading(true);
+    try {
+      const completedMatches = matches
+        .filter(m => m.status === 'finished' && m.scoreA !== undefined)
+        .map(m => ({ teamA: m.teamA.name, scoreA: m.scoreA, scoreB: m.scoreB, teamB: m.teamB.name }));
+
+      const response = await fetch('/api/win-probability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ standings: groups, completedMatches }),
+      });
+      if (response.ok) {
+        const data: WinProbabilityResult = await response.json();
+        if (data.probabilities && data.probabilities.length > 0) {
+          setWinProb(data.probabilities);
+          setWinProbMethodology(data.methodology || '');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch win probabilities', err);
+    } finally {
+      setWinProbLoading(false);
     }
   };
 
@@ -694,90 +747,154 @@ export default function App() {
 
         {activeTab === 'insights' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="mb-6 border-b border-white/10 pb-3">
-              <h2 className="font-sans font-bold text-2xl text-white">AI Tactical Desk</h2>
-              <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Powered by Data Science Models</p>
+            <div className="mb-6 border-b border-white/10 pb-3 flex justify-between items-end">
+              <div>
+                <h2 className="font-sans font-bold text-2xl text-white">AI Tactical Desk</h2>
+                <p className="text-[12px] uppercase font-bold tracking-widest mt-1 text-[#00B25B]">Live Monte Carlo · LLM Analysis</p>
+              </div>
+              {winProb.length === 0 && !winProbLoading && (
+                <button
+                  onClick={fetchWinProbabilities}
+                  className="text-[10px] font-bold uppercase tracking-widest border border-white/20 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all"
+                >
+                  Run Simulation
+                </button>
+              )}
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* ML Win Probability Model */}
+              {/* Dynamic Win Probability */}
               <div className="bg-white/5 backdrop-blur-md p-6 border border-white/10 rounded-2xl shadow-lg flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] mb-2 block flex items-center gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] mb-2 flex items-center gap-1">
                   <LineChart size={12}/> Tournament Win Probability
                 </span>
-                <h3 className="font-sans font-bold text-xl mb-4 leading-tight text-white">Latest Monte Carlo Simulations</h3>
-                
-                <div className="space-y-4 flex-1">
-                  {[
-                    { team: 'France', prob: 22.4, flag: '🇫🇷' },
-                    { team: 'Brazil', prob: 18.1, flag: '🇧🇷' },
-                    { team: 'England', prob: 14.5, flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-                    { team: 'Spain', prob: 11.2, flag: '🇪🇸' },
-                    { team: 'Argentina', prob: 9.8, flag: '🇦🇷' },
-                  ].map((data, i) => (
-                    <div key={data.team} className="group">
-                      <div className="flex justify-between text-[11px] font-bold uppercase tracking-widest mb-1 text-white">
-                        <span className="flex items-center gap-2">
-                          <span className="drop-shadow-md bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{data.flag}</span>
-                          {data.team}
-                        </span>
-                        <span className="font-mono text-white/80">{data.prob}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-1000 ease-out ${i === 0 ? 'bg-gradient-to-r from-[#00B25B] to-[#00904a] shadow-[0_0_8px_#00B25B]' : 'bg-white/30'}`}
-                          style={{ width: `${(data.prob / 25) * 100}%` }}
-                        ></div>
+                <h3 className="font-sans font-bold text-xl mb-4 leading-tight text-white">Monte Carlo Simulation</h3>
+
+                {winProbLoading && (
+                  <div className="flex-1 flex flex-col items-center justify-center py-8 gap-3 text-[#00B25B]">
+                    <Loader2 size={28} className="animate-spin" />
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-white/50">Running 10,000 simulations...</p>
+                  </div>
+                )}
+
+                {!winProbLoading && winProb.length === 0 && (
+                  <div className="flex-1 flex flex-col items-center justify-center py-8 gap-4 text-center">
+                    <LineChart size={32} className="text-white/20" />
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">Simulation not yet run</p>
+                    <button
+                      onClick={fetchWinProbabilities}
+                      className="bg-gradient-to-br from-[#00B25B] to-[#00904a] text-white px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest rounded-xl hover:shadow-lg hover:shadow-[#00B25B]/20 transition-all"
+                    >
+                      Run AI Simulation
+                    </button>
+                    <p className="text-[9px] uppercase font-bold tracking-widest text-white/30">
+                      Uses live standings + squad analysis
+                    </p>
+                  </div>
+                )}
+
+                {!winProbLoading && winProb.length > 0 && (
+                  <>
+                    <div className="space-y-4 flex-1">
+                      {winProb.map((data, i) => {
+                        const maxProb = winProb[0]?.prob || 25;
+                        const trendIcon = data.trend === 'up' ? '↑' : data.trend === 'down' ? '↓' : '→';
+                        const trendColor = data.trend === 'up' ? 'text-[#00B25B]' : data.trend === 'down' ? 'text-red-400' : 'text-white/40';
+                        return (
+                          <div key={data.team} className="group">
+                            <div className="flex justify-between text-[11px] font-bold uppercase tracking-widest mb-1.5 text-white">
+                              <span className="flex items-center gap-2">
+                                <span className="drop-shadow-md bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{data.flag}</span>
+                                {data.team}
+                                <span className={`text-xs font-black ${trendColor}`} title={`Trend: ${data.trend}`}>{trendIcon}</span>
+                              </span>
+                              <span className="font-mono text-white/80">{data.prob.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-1000 ease-out ${i === 0 ? 'bg-gradient-to-r from-[#00B25B] to-[#00904a] shadow-[0_0_8px_#00B25B]' : 'bg-white/30'}`}
+                                style={{ width: `${(data.prob / maxProb) * 100}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-5 pt-4 border-t border-white/10 space-y-2">
+                      {winProbMethodology && (
+                        <p className="text-[10px] font-mono text-white/50 italic">{winProbMethodology}</p>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <p className="text-[9px] font-mono text-white/30">Rest of field combined probability not shown</p>
+                        <button
+                          onClick={fetchWinProbabilities}
+                          className="text-[9px] font-bold uppercase tracking-widest text-[#00B25B]/60 hover:text-[#00B25B] transition-colors"
+                        >
+                          Refresh ↻
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-6 pt-4 border-t border-white/10">
-                  <p className="text-[10px] font-mono text-white/40">Based on 10,000 tournament simulations incorporating current standings, xG, and squad injuries.</p>
-                </div>
+                  </>
+                )}
               </div>
 
-              {/* Tactical AI Chat */}
-              <div className="bg-black/40 backdrop-blur-xl text-white flex flex-col border border-white/10 rounded-2xl shadow-lg h-[400px] overflow-hidden">
+              {/* Tactical AI Chat — improved with suggested prompts */}
+              <div className="bg-black/40 backdrop-blur-xl text-white flex flex-col border border-white/10 rounded-2xl shadow-lg h-[480px] overflow-hidden">
                  <div className="p-4 border-b border-white/10 bg-white/5">
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] block">Interactive Analyst</span>
-                   <h3 className="font-sans font-bold text-lg leading-tight mt-1 text-white">Ask the AI Tactician</h3>
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] block">Alex — AI Analyst</span>
+                   <h3 className="font-sans font-bold text-lg leading-tight mt-0.5 text-white">Tactical Desk</h3>
                  </div>
                  
                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                    {chatHistory.length === 0 && (
-                     <div className="text-center opacity-50 mt-10">
-                       <p className="font-serif italic text-lg mb-2 text-white/80">"How will the USA line up?"</p>
-                       <p className="text-[10px] uppercase font-bold tracking-widest text-white/50">Ask about tactics, xG, or matchups</p>
+                     <div className="space-y-3 mt-4">
+                       <p className="text-[10px] uppercase font-bold tracking-widest text-white/30 text-center mb-3">Try asking:</p>
+                       {[
+                         "How will France's press disrupt Brazil?",
+                         "Who wins the Golden Boot?",
+                         "What's USA's biggest tactical weakness?",
+                         "England vs Spain — who advances?",
+                       ].map(suggestion => (
+                         <button
+                           key={suggestion}
+                           onClick={() => setChatInput(suggestion)}
+                           className="w-full text-left px-3 py-2.5 text-[12px] bg-white/5 border border-white/10 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all font-sans"
+                         >
+                           "{suggestion}"
+                         </button>
+                       ))}
                      </div>
                    )}
                    {chatHistory.map((msg, idx) => (
                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                       <div className={`max-w-[85%] p-3 text-sm ${
+                       <div className={`max-w-[88%] p-3 text-sm ${
                          msg.role === 'user' 
                            ? 'bg-gradient-to-br from-[#00B25B] to-[#00904a] text-white font-medium rounded-2xl rounded-tr-sm shadow-md' 
-                           : 'bg-white/10 text-white/90 rounded-2xl rounded-tl-sm border border-white/10'
+                           : 'bg-white/10 text-white/90 rounded-2xl rounded-tl-sm border border-white/10 leading-relaxed'
                        }`}>
+                         {msg.role === 'ai' && (
+                           <span className="block text-[9px] uppercase tracking-widest font-bold text-[#00B25B] mb-1.5">Alex</span>
+                         )}
                          {msg.text}
                        </div>
                      </div>
                    ))}
                    {isChatLoading && (
                      <div className="flex justify-start">
-                       <div className="max-w-[85%] p-3 text-sm bg-white/10 text-[#00B25B] rounded-2xl rounded-tl-sm border border-white/10 flex items-center gap-2">
-                         <Loader2 size={14} className="animate-spin" /> <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Analyzing data...</span>
+                       <div className="p-3 text-sm bg-white/10 text-[#00B25B] rounded-2xl rounded-tl-sm border border-white/10 flex items-center gap-2">
+                         <Loader2 size={14} className="animate-spin" /> <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Alex is analyzing...</span>
                        </div>
                      </div>
                    )}
                  </div>
 
                  <form onSubmit={handleChatSubmit} className="p-3 bg-white/5 border-t border-white/10">
-                   <div className="flex gap-2 relative">
+                   <div className="flex gap-2">
                      <input 
                        type="text" 
                        value={chatInput}
                        onChange={e => setChatInput(e.target.value)}
-                       placeholder="Ask about team tactics..."
+                       placeholder="Ask Alex about tactics, xG, matchups..."
                        className="flex-1 bg-black/30 text-white placeholder-white/30 px-4 py-3 text-sm focus:outline-none focus:bg-black/50 border border-white/10 focus:border-[#00B25B]/50 transition-all rounded-xl"
                      />
                      <button 

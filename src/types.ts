@@ -32,9 +32,13 @@ export type Match = {
     scoreA: number;
     scoreB: number;
   };
-  aiPrediction?: string;
-  aiScoreA?: number;
-  aiScoreB?: number;
+  // Richer AI prediction fields from the improved /api/predict endpoint
+  aiPrediction?: string;           // Full tactical analysis text
+  aiScoreA?: number;               // AI predicted score for teamA
+  aiScoreB?: number;               // AI predicted score for teamB
+  aiKeyBattle?: string;            // e.g. "Bellingham vs Modrić in midfield"
+  aiXGProjection?: string;         // e.g. "xG: England 1.7 — Croatia 0.9"
+  aiConfidence?: 'high' | 'medium' | 'low';
   isAiLoading?: boolean;
   lineups?: MatchLineups;
 };
@@ -54,4 +58,18 @@ export type GroupTeamStats = {
 export type Group = {
   name: string;
   teams: GroupTeamStats[];
+};
+
+// New type for the /api/win-probability response
+export type WinProbabilityEntry = {
+  team: string;
+  flag: string;
+  prob: number;
+  trend: 'up' | 'down' | 'stable';
+};
+
+export type WinProbabilityResult = {
+  probabilities: WinProbabilityEntry[];
+  methodology: string;
+  fieldProb: number;
 };
