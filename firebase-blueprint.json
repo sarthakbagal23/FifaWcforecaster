@@ -1,0 +1,16 @@
+{
+  "collections": [
+    {
+      "name": "predictions",
+      "description": "Stores user match predictions",
+      "documentId": "{userId}_{matchId}",
+      "fields": {
+        "userId": "string",
+        "matchId": "string",
+        "scoreA": "number",
+        "scoreB": "number",
+        "updatedAt": "timestamp"
+      }
+    }
+  ]
+}
