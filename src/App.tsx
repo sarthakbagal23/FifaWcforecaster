@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { INITIAL_MATCHES, GROUPS, TOP_SCORERS } from './data';
 import { MatchCard } from './components/MatchCard';
 import { GroupTable } from './components/GroupTable';
+import { KnockoutBracket } from './components/KnockoutBracket';
 import { Match, Group, WinProbabilityEntry, WinProbabilityResult } from './types';
 import { Trophy, Calendar, LayoutList, LineChart, Send, Loader2, Bell, X, LogIn, LogOut, Share2, Menu } from 'lucide-react';
 import { auth, db, googleProvider } from './lib/firebase';
@@ -459,17 +460,21 @@ export default function App() {
 
   if (!user && !isGuest) {
     return (
-      <div className="min-h-screen bg-[#0D1117] relative flex items-center justify-center p-4 overflow-hidden">
+      <div 
+        className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: 'url(/login_bg.jpg)' }}
+      >
+        <div className="absolute inset-0 bg-[#0D1117]/80 backdrop-blur-sm"></div>
         {/* Animated Background */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,178,91,0.15),transparent_50%)]"></div>
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00B25B]/50 to-transparent"></div>
-        <div className="absolute -inset-[100%] opacity-20">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,178,91,0.2),transparent_60%)]"></div>
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00B25B]/60 to-transparent"></div>
+        <div className="absolute -inset-[100%] opacity-30">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
         </div>
 
-        <div className="bg-black/40 backdrop-blur-2xl p-8 max-w-sm w-full border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center text-center relative z-10">
-          <div className="w-24 h-24 rounded-full overflow-hidden shadow-2xl shadow-[#00B25B]/30 border-2 border-[#00B25B] mb-6 transform hover:scale-105 transition-transform duration-500">
-            <img src="/logo.jpg" alt="WC Forecaster Logo" className="w-full h-full object-cover" />
+        <div className="glass-panel p-8 max-w-sm w-full rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center text-center relative z-10">
+          <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-2xl shadow-[#00B25B]/30 border-2 border-[#00B25B] mb-6 transform hover:scale-105 transition-transform duration-500">
+            <img src="/icon.png" alt="WC Forecaster Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="font-sans font-black text-3xl tracking-tighter uppercase leading-none mb-2 text-white">
             WCForecaster<span className="text-[#00B25B]">.</span>
@@ -498,13 +503,18 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-mesh text-slate-200 font-sans flex flex-col custom-scrollbar overflow-y-auto">
+    <div 
+      className="min-h-screen text-slate-200 font-sans flex flex-col custom-scrollbar overflow-y-auto bg-cover bg-center bg-fixed bg-no-repeat relative"
+      style={{ backgroundImage: 'url(/stadium_bg.jpg)' }}
+    >
+      <div className="absolute inset-0 bg-[#0D1117]/85 backdrop-blur-[2px] pointer-events-none z-0"></div>
+      <div className="relative z-10 flex flex-col flex-1 min-h-screen">
       {/* Top Bar (Glassmorphism FotMob style) */}
       <header className="sticky top-0 z-20 bg-[#0D1117]/80 backdrop-blur-xl border-b border-white/10 shadow-md">
         <div className="px-4 py-4 flex justify-between items-center max-w-5xl mx-auto w-full">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg shadow-[#00B25B]/20 border-2 border-[#00B25B]">
-              <img src="/logo.jpg" alt="WC Forecaster Logo" className="w-full h-full object-cover" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-[#00B25B]/20 border-2 border-[#00B25B]">
+              <img src="/icon.png" alt="WC Forecaster Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="font-sans font-black text-2xl tracking-tighter uppercase leading-none mt-1 text-white">
               WCForecaster<span className="text-[#00B25B]">.</span>
@@ -654,14 +664,25 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
+            className="space-y-8"
           >
-            <div className="mb-6 flex justify-between items-end border-b border-white/10 pb-3">
-              <h2 className="font-sans font-bold text-2xl text-white">Standings</h2>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Updated Live</span>
-            </div>
-            {groups.map(group => (
-              <GroupTable key={group.name} group={group} />
-            ))}
+            <section>
+              <div className="mb-6 flex justify-between items-end border-b border-white/10 pb-3">
+                <h2 className="font-sans font-bold text-2xl text-white">Knockout Stage</h2>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#00B25B]">Path to Final</span>
+              </div>
+              <KnockoutBracket matches={matches} />
+            </section>
+
+            <section>
+              <div className="mb-6 flex justify-between items-end border-b border-white/10 pb-3 mt-12">
+                <h2 className="font-sans font-bold text-xl text-white/80">Group Stage Final Standings</h2>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Concluded</span>
+              </div>
+              {groups.map(group => (
+                <GroupTable key={group.name} group={group} />
+              ))}
+            </section>
           </motion.div>
         )}
 
@@ -801,7 +822,11 @@ export default function App() {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Dynamic Win Probability */}
-              <div className="glass-panel p-6 rounded-2xl shadow-lg flex flex-col relative overflow-hidden">
+              <div 
+                className="glass-panel p-6 rounded-2xl shadow-lg flex flex-col relative overflow-hidden bg-cover bg-center"
+                style={{ backgroundImage: 'url(/tactical_bg.jpg)' }}
+              >
+                <div className="absolute inset-0 bg-[#0D1117]/85 backdrop-blur-[2px]"></div>
                 <div className="absolute top-0 right-0 w-64 h-64 bg-[#00B25B]/5 rounded-full blur-[50px] pointer-events-none"></div>
                 <div className="relative z-10 flex flex-col h-full">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] mb-2 flex items-center gap-1">
@@ -879,9 +904,13 @@ export default function App() {
               </div>
 
               {/* Tactical AI Chat — improved with suggested prompts */}
-              <div className="glass-panel flex flex-col rounded-2xl shadow-lg h-[480px] overflow-hidden relative">
+              <div 
+                className="glass-panel flex flex-col rounded-2xl shadow-lg h-[480px] overflow-hidden relative bg-cover bg-center"
+                style={{ backgroundImage: 'url(/tactical_bg.jpg)' }}
+              >
+                <div className="absolute inset-0 bg-[#0D1117]/85 backdrop-blur-[2px]"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00B25B]/5 rounded-full blur-[50px] pointer-events-none"></div>
-                 <div className="relative z-10 p-4 border-b border-white/10 bg-black/20">
+                 <div className="relative z-10 p-4 border-b border-white/10 bg-black/40">
                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#00B25B] block">Alex — AI Analyst</span>
                    <h3 className="font-sans font-bold text-lg leading-tight mt-0.5 text-white">Tactical Desk</h3>
                  </div>
@@ -936,7 +965,7 @@ export default function App() {
                        value={chatInput}
                        onChange={e => setChatInput(e.target.value)}
                        placeholder="Ask Alex about tactics, xG, matchups..."
-                       className="flex-1 bg-black/30 text-white placeholder-white/30 px-4 py-3 text-sm focus:outline-none focus:bg-black/50 border border-white/10 focus:border-[#00B25B]/50 transition-all rounded-xl"
+                       className="flex-1 bg-black/30 text-white placeholder-white/30 px-4 py-3 text-base focus:outline-none focus:bg-black/50 border border-white/10 focus:border-[#00B25B]/50 transition-all rounded-xl"
                      />
                      <button 
                        type="submit" 
@@ -1019,6 +1048,7 @@ export default function App() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

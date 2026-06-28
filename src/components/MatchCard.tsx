@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Match } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, PlayCircle, Loader2 } from 'lucide-react';
+import { ChevronDown, PlayCircle, Loader2, X, MapPin, CalendarDays, ExternalLink } from 'lucide-react';
 
 interface MatchCardProps {
   match: Match;
@@ -43,6 +43,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
   };
 
   return (
+    <>
     <motion.div 
       layout
       className="glass-card rounded-2xl mb-4 group flex flex-col overflow-hidden"
@@ -50,17 +51,20 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
       {/* FotMob Style Row */}
       <div 
         className="flex items-center px-4 py-4 sm:px-6 cursor-pointer select-none gap-4"
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => setExpanded(true)}
       >
-        {/* Time / Status */}
-        <div className={`w-12 sm:w-16 text-center font-mono text-[11px] sm:text-[13px] font-bold ${isLive ? 'text-[#00B25B]' : 'text-white/50'}`}>
+        {/* Time / Status / Date */}
+        <div className={`w-16 sm:w-20 text-center flex flex-col items-center justify-center font-mono text-[11px] sm:text-[13px] font-bold ${isLive ? 'text-[#00B25B]' : 'text-white/50'}`}>
           {isLive ? (
             <div className="flex items-center justify-center gap-1">
               <span className="w-1.5 h-1.5 bg-[#00B25B] rounded-full animate-pulse shadow-[0_0_8px_#00B25B]"></span>
               {match.time}
             </div>
           ) : (
-            match.time
+            <>
+              <span className="text-[9px] uppercase tracking-widest text-white/40 mb-0.5">{match.date ? new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+              <span>{match.time}</span>
+            </>
           )}
         </div>
 
@@ -106,21 +110,54 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
 
         {/* Expand Indicator */}
         <div className="w-6 flex justify-end text-white/30 group-hover:text-white/70 transition-colors">
-          <ChevronDown size={20} className={`transform transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <ExternalLink size={16} />
         </div>
       </div>
+    </motion.div>
 
-      {/* Expanded Editorial/Predictor Area */}
+      {/* Expanded Editorial/Predictor Area (Modal) */}
       <AnimatePresence>
         {expanded && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" style={{ position: 'fixed' }}>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              className="absolute inset-0"
+              onClick={() => setExpanded(false)}
+            />
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-black/20 border-t border-white/5 flex flex-col"
+            initial={{ scale: 0.95, opacity: 0, y: 100 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 100 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+            className="glass-panel relative w-full max-w-3xl h-[85vh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-t-[2rem] sm:rounded-3xl shadow-2xl border border-[#00B25B]/30 border-b-0 sm:border-b flex flex-col z-10 custom-scrollbar"
           >
+            {/* Mobile drag handle indicator */}
+            <div className="w-full flex justify-center pt-3 pb-1 sm:hidden absolute top-0 z-30">
+              <div className="w-12 h-1.5 bg-white/20 rounded-full"></div>
+            </div>
+
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-[#00B25B]/20 to-transparent pointer-events-none"></div>
+
+            {/* Modal Header */}
+            <div className="sticky top-0 z-20 flex justify-between items-center p-4 pt-8 sm:pt-6 sm:p-6 border-b border-white/10 bg-[#0D1117]/90 backdrop-blur-xl">
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#00B25B]">{match.stage.split(' - ')[0]}</span>
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-white/60 font-medium">
+                  <span className="flex items-center gap-1"><CalendarDays size={12} /> {match.date ? new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''} {match.time}</span>
+                  {match.stage.includes(' - ') && <span className="flex items-center gap-1"><MapPin size={12} /> {match.stage.split(' - ')[1]}</span>}
+                </div>
+              </div>
+              <button 
+                onClick={() => setExpanded(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
             {/* Tabs */}
-            <div className="flex gap-2 mx-4 mt-4 p-1 bg-white/5 rounded-xl border border-white/5">
+            <div className="flex gap-2 mx-4 sm:mx-6 mt-4 sm:mt-6 p-1 bg-white/5 rounded-xl border border-white/5 shrink-0">
               {(['forecast', 'lineups', 'heatmap'] as const).map(tab => (
                  <button 
                    key={tab}
@@ -206,7 +243,11 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
                   )}
 
                   {/* AI Tactical Box */}
-                  <div className="flex-1 glass-panel p-5 sm:p-6 rounded-2xl flex flex-col relative overflow-hidden">
+                  <div 
+                    className="flex-1 glass-panel p-5 sm:p-6 rounded-2xl flex flex-col relative overflow-hidden bg-cover bg-center"
+                    style={{ backgroundImage: 'url(/tactical_bg.jpg)' }}
+                  >
+                    <div className="absolute inset-0 bg-[#0D1117]/85 backdrop-blur-[2px]"></div>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-[#00B25B]/5 rounded-full blur-[40px] pointer-events-none"></div>
                     <div className="relative z-10 flex items-center justify-between mb-4 border-b border-white/10 pb-3">
                       <div>
@@ -376,9 +417,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onPredict, onGetAiI
               )}
             </div>
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </>
   );
 };
 

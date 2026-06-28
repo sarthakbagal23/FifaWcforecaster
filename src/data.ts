@@ -46,7 +46,9 @@ export const TEAMS = {
   bra: t('bra', 'Brazil', '🇧🇷'),
   col: t('col', 'Colombia', '🇨🇴'),
   uru: t('uru', 'Uruguay', '🇺🇾'),
-  // Others (CAF, AFC, CONCACAF)
+  par: t('par', 'Paraguay', '🇵🇾'),
+  ecu: t('ecu', 'Ecuador', '🇪🇨'),
+  // Others (CAF, AFC, CONCACAF, UEFA)
   jpn: t('jpn', 'Japan', '🇯🇵'),
   sen: t('sen', 'Senegal', '🇸🇳'),
   mar: t('mar', 'Morocco', '🇲🇦'),
@@ -56,43 +58,73 @@ export const TEAMS = {
   egy: t('egy', 'Egypt', '🇪🇬'),
   ksa: t('ksa', 'Saudi Arabia', '🇸🇦'),
   crc: t('crc', 'Costa Rica', '🇨🇷'),
+  swe: t('swe', 'Sweden', '🇸🇪'),
+  rsa: t('rsa', 'South Africa', '🇿🇦'),
+  aut: t('aut', 'Austria', '🇦🇹'),
+  bih: t('bih', 'Bosnia-Herz', '🇧🇦'),
+  bel: t('bel', 'Belgium', '🇧🇪'),
+  civ: t('civ', 'Ivory Coast', '🇨🇮'),
+  nor: t('nor', 'Norway', '🇳🇴'),
+  cod: t('cod', 'Congo DR', '🇨🇩'),
+  cpv: t('cpv', 'Cape Verde', '🇨🇻'),
+  sui: t('sui', 'Switzerland', '🇨🇭'),
+  alg: t('alg', 'Algeria', '🇩🇿'),
+  gha: t('gha', 'Ghana', '🇬🇭'),
 };
 
 export const GROUPS: Group[] = [
   {
-    name: 'Group A (Mexico)',
+    name: 'Group A',
     teams: [
-      { team: TEAMS.mex, played: 1, won: 1, drawn: 0, lost: 0, gf: 2, ga: 1, gd: 1, points: 3 },
-      { team: TEAMS.cro, played: 1, won: 0, drawn: 1, lost: 0, gf: 1, ga: 1, gd: 0, points: 1 },
-      { team: TEAMS.sen, played: 1, won: 0, drawn: 1, lost: 0, gf: 1, ga: 1, gd: 0, points: 1 },
-      { team: TEAMS.kor, played: 1, won: 0, drawn: 0, lost: 1, gf: 1, ga: 2, gd: -1, points: 0 },
+      { team: TEAMS.mex, played: 3, won: 2, drawn: 1, lost: 0, gf: 5, ga: 2, gd: 3, points: 7 },
+      { team: TEAMS.sen, played: 3, won: 1, drawn: 2, lost: 0, gf: 4, ga: 3, gd: 1, points: 5 },
+      { team: TEAMS.cro, played: 3, won: 1, drawn: 1, lost: 1, gf: 3, ga: 3, gd: 0, points: 4 },
+      { team: TEAMS.kor, played: 3, won: 0, drawn: 0, lost: 3, gf: 2, ga: 6, gd: -4, points: 0 },
     ].sort((a, b) => b.points - a.points || b.gd - a.gd)
   },
   {
-    name: 'Group B (Canada)',
+    name: 'Group B',
     teams: [
-      { team: TEAMS.can, played: 1, won: 1, drawn: 0, lost: 0, gf: 1, ga: 0, gd: 1, points: 3 },
-      { team: TEAMS.ger, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.jpn, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.mar, played: 1, won: 0, drawn: 0, lost: 1, gf: 0, ga: 1, gd: -1, points: 0 },
+      { team: TEAMS.can, played: 3, won: 2, drawn: 1, lost: 0, gf: 4, ga: 1, gd: 3, points: 7 },
+      { team: TEAMS.ger, played: 3, won: 2, drawn: 0, lost: 1, gf: 5, ga: 2, gd: 3, points: 6 },
+      { team: TEAMS.jpn, played: 3, won: 1, drawn: 1, lost: 1, gf: 2, ga: 3, gd: -1, points: 4 },
+      { team: TEAMS.mar, played: 3, won: 0, drawn: 0, lost: 3, gf: 1, ga: 6, gd: -5, points: 0 },
     ].sort((a, b) => b.points - a.points || b.gd - a.gd)
   },
   {
     name: 'Group C',
     teams: [
-      { team: TEAMS.fra, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.col, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.aus, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.egy, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
+      { team: TEAMS.fra, played: 3, won: 3, drawn: 0, lost: 0, gf: 7, ga: 1, gd: 6, points: 9 },
+      { team: TEAMS.col, played: 3, won: 1, drawn: 1, lost: 1, gf: 3, ga: 4, gd: -1, points: 4 },
+      { team: TEAMS.aus, played: 3, won: 1, drawn: 0, lost: 2, gf: 2, ga: 4, gd: -2, points: 3 },
+      { team: TEAMS.egy, played: 3, won: 0, drawn: 1, lost: 2, gf: 1, ga: 4, gd: -3, points: 1 },
     ].sort((a, b) => b.points - a.points || b.gd - a.gd)
   },
   {
-    name: 'Group D (USA)',
+    name: 'Group D',
     teams: [
-      { team: TEAMS.usa, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.eng, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.nga, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
-      { team: TEAMS.ksa, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 },
+      { team: TEAMS.eng, played: 3, won: 2, drawn: 1, lost: 0, gf: 5, ga: 2, gd: 3, points: 7 },
+      { team: TEAMS.usa, played: 3, won: 1, drawn: 2, lost: 0, gf: 3, ga: 2, gd: 1, points: 5 },
+      { team: TEAMS.nga, played: 3, won: 1, drawn: 0, lost: 2, gf: 4, ga: 5, gd: -1, points: 3 },
+      { team: TEAMS.ksa, played: 3, won: 0, drawn: 1, lost: 2, gf: 1, ga: 4, gd: -3, points: 1 },
+    ].sort((a, b) => b.points - a.points || b.gd - a.gd)
+  },
+  {
+    name: 'Group E',
+    teams: [
+      { team: TEAMS.arg, played: 3, won: 3, drawn: 0, lost: 0, gf: 6, ga: 1, gd: 5, points: 9 },
+      { team: TEAMS.ita, played: 3, won: 1, drawn: 1, lost: 1, gf: 2, ga: 2, gd: 0, points: 4 },
+      { team: TEAMS.crc, played: 3, won: 1, drawn: 0, lost: 2, gf: 2, ga: 4, gd: -2, points: 3 },
+      { team: TEAMS.uru, played: 3, won: 0, drawn: 1, lost: 2, gf: 1, ga: 4, gd: -3, points: 1 },
+    ].sort((a, b) => b.points - a.points || b.gd - a.gd)
+  },
+  {
+    name: 'Group F',
+    teams: [
+      { team: TEAMS.bra, played: 3, won: 2, drawn: 1, lost: 0, gf: 5, ga: 2, gd: 3, points: 7 },
+      { team: TEAMS.por, played: 3, won: 2, drawn: 0, lost: 1, gf: 4, ga: 2, gd: 2, points: 6 },
+      { team: TEAMS.ned, played: 3, won: 1, drawn: 1, lost: 1, gf: 3, ga: 3, gd: 0, points: 4 },
+      { team: TEAMS.esp, played: 3, won: 0, drawn: 0, lost: 3, gf: 1, ga: 6, gd: -5, points: 0 },
     ].sort((a, b) => b.points - a.points || b.gd - a.gd)
   }
 ];
@@ -108,88 +140,163 @@ export const TOP_SCORERS = [
 
 export const INITIAL_MATCHES: Match[] = [
   {
-    id: 'm1',
-    teamA: TEAMS.can,
-    teamB: TEAMS.mar,
-    date: '2026-06-12',
-    time: '72\'',
-    stage: 'Group B - BMO Field, Toronto',
-    scoreA: 1,
-    scoreB: 0,
-    status: 'live',
-    lineups: {
-      teamA: generateLineup(TEAMS.can, '4-4-2'),
-      teamB: generateLineup(TEAMS.mar, '4-3-3')
-    }
-  },
-  {
-    id: 'm2',
+    id: 'r32-1',
     teamA: TEAMS.ger,
+    teamB: TEAMS.par,
+    date: '2026-06-29',
+    time: '16:30',
+    stage: 'Round of 32 - Gillette Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.ger, '4-2-3-1'), teamB: generateLineup(TEAMS.par, '4-4-2') }
+  },
+  {
+    id: 'r32-2',
+    teamA: TEAMS.civ,
+    teamB: TEAMS.nor,
+    date: '2026-06-30',
+    time: '13:00',
+    stage: 'Round of 32 - AT&T Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.civ, '4-3-3'), teamB: generateLineup(TEAMS.nor, '4-4-2') }
+  },
+  {
+    id: 'r32-3',
+    teamA: TEAMS.rsa,
+    teamB: TEAMS.can,
+    date: '2026-06-28',
+    time: '15:00',
+    stage: 'Round of 32 - Los Angeles Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.rsa, '4-4-2'), teamB: generateLineup(TEAMS.can, '4-3-3') }
+  },
+  {
+    id: 'r32-4',
+    teamA: TEAMS.bra,
     teamB: TEAMS.jpn,
-    date: '2026-06-12',
-    time: '18:00',
-    stage: 'Group B - BC Place, Vancouver',
+    date: '2026-06-29',
+    time: '13:00',
+    stage: 'Round of 32 - NRG Stadium',
     status: 'upcoming',
-    lineups: {
-      teamA: generateLineup(TEAMS.ger, '4-2-3-1'),
-      teamB: generateLineup(TEAMS.jpn, '4-3-3')
-    }
+    lineups: { teamA: generateLineup(TEAMS.bra, '4-3-3'), teamB: generateLineup(TEAMS.jpn, '4-2-3-1') }
   },
   {
-    id: 'm3',
-    teamA: TEAMS.usa,
-    teamB: TEAMS.eng,
-    date: '2026-06-12',
-    time: '21:00',
-    stage: 'Group D - SoFi Stadium, Los Angeles',
+    id: 'r32-5',
+    teamA: TEAMS.esp,
+    teamB: TEAMS.aut,
+    date: '2026-07-02',
+    time: '15:00',
+    stage: 'Round of 32 - Los Angeles Stadium',
     status: 'upcoming',
-    lineups: {
-      teamA: generateLineup(TEAMS.usa, '4-3-3'),
-      teamB: generateLineup(TEAMS.eng, '4-2-3-1')
-    }
+    lineups: { teamA: generateLineup(TEAMS.esp, '4-3-3'), teamB: generateLineup(TEAMS.aut, '4-2-3-1') }
   },
   {
-    id: 'm4',
-    teamA: TEAMS.fra,
-    teamB: TEAMS.col,
-    date: '2026-06-13',
-    time: '12:00',
-    stage: 'Group C - MetLife Stadium, New York/NJ',
+    id: 'r32-6',
+    teamA: TEAMS.por,
+    teamB: TEAMS.cro,
+    date: '2026-07-02',
+    time: '19:00',
+    stage: 'Round of 32 - BMO Field',
     status: 'upcoming',
-    lineups: {
-      teamA: generateLineup(TEAMS.fra, '4-3-3'),
-      teamB: generateLineup(TEAMS.col, '4-4-2')
-    }
+    lineups: { teamA: generateLineup(TEAMS.por, '4-3-3'), teamB: generateLineup(TEAMS.cro, '4-3-3') }
   },
   {
-    id: 'm5',
-    teamA: TEAMS.mex,
-    teamB: TEAMS.kor,
-    date: '2026-06-11',
-    time: 'FT',
-    stage: 'Group A - Estadio Azteca, Mexico City',
-    scoreA: 2,
-    scoreB: 1,
-    status: 'finished',
-    userPrediction: { scoreA: 2, scoreB: 0 },
-    lineups: {
-      teamA: generateLineup(TEAMS.mex, '4-3-3'),
-      teamB: generateLineup(TEAMS.kor, '4-4-2')
-    }
-  },
-  {
-    id: 'm6',
-    teamA: TEAMS.cro,
+    id: 'r32-7',
+    teamA: TEAMS.bel,
     teamB: TEAMS.sen,
-    date: '2026-06-11',
-    time: 'FT',
-    stage: 'Group A - Estadio Akron, Guadalajara',
-    scoreA: 1,
-    scoreB: 1,
-    status: 'finished',
-    lineups: {
-      teamA: generateLineup(TEAMS.cro, '4-3-3'),
-      teamB: generateLineup(TEAMS.sen, '4-2-3-1')
-    }
+    date: '2026-07-01',
+    time: '16:00',
+    stage: 'Round of 32 - Lumen Field',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.bel, '4-3-3'), teamB: generateLineup(TEAMS.sen, '4-2-3-1') }
+  },
+  {
+    id: 'r32-8',
+    teamA: TEAMS.usa,
+    teamB: TEAMS.bih,
+    date: '2026-07-01',
+    time: '20:00',
+    stage: 'Round of 32 - Levi\'s Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.usa, '4-3-3'), teamB: generateLineup(TEAMS.bih, '4-4-2') }
+  },
+  {
+    id: 'r32-9',
+    teamA: TEAMS.ned,
+    teamB: TEAMS.mar,
+    date: '2026-06-29',
+    time: '21:00',
+    stage: 'Round of 32 - Estadio BBVA',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.ned, '4-3-3'), teamB: generateLineup(TEAMS.mar, '4-3-3') }
+  },
+  {
+    id: 'r32-10',
+    teamA: TEAMS.fra,
+    teamB: TEAMS.swe,
+    date: '2026-06-30',
+    time: '17:00',
+    stage: 'Round of 32 - MetLife Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.fra, '4-3-3'), teamB: generateLineup(TEAMS.swe, '4-4-2') }
+  },
+  {
+    id: 'r32-11',
+    teamA: TEAMS.mex,
+    teamB: TEAMS.ecu,
+    date: '2026-06-30',
+    time: '21:00',
+    stage: 'Round of 32 - Estadio Azteca',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.mex, '4-3-3'), teamB: generateLineup(TEAMS.ecu, '4-4-2') }
+  },
+  {
+    id: 'r32-12',
+    teamA: TEAMS.eng,
+    teamB: TEAMS.cod,
+    date: '2026-07-01',
+    time: '12:00',
+    stage: 'Round of 32 - Mercedes-Benz Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.eng, '4-2-3-1'), teamB: generateLineup(TEAMS.cod, '4-3-3') }
+  },
+  {
+    id: 'r32-13',
+    teamA: TEAMS.aus,
+    teamB: TEAMS.egy,
+    date: '2026-07-03',
+    time: '14:00',
+    stage: 'Round of 32 - AT&T Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.aus, '4-4-2'), teamB: generateLineup(TEAMS.egy, '4-3-3') }
+  },
+  {
+    id: 'r32-14',
+    teamA: TEAMS.col,
+    teamB: TEAMS.gha,
+    date: '2026-07-03',
+    time: '21:30',
+    stage: 'Round of 32 - Arrowhead Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.col, '4-4-2'), teamB: generateLineup(TEAMS.gha, '4-3-3') }
+  },
+  {
+    id: 'r32-15',
+    teamA: TEAMS.sui,
+    teamB: TEAMS.alg,
+    date: '2026-07-02',
+    time: '23:00',
+    stage: 'Round of 32 - BC Place',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.sui, '4-2-3-1'), teamB: generateLineup(TEAMS.alg, '4-3-3') }
+  },
+  {
+    id: 'r32-16',
+    teamA: TEAMS.arg,
+    teamB: TEAMS.cpv,
+    date: '2026-07-03',
+    time: '18:00',
+    stage: 'Round of 32 - Hard Rock Stadium',
+    status: 'upcoming',
+    lineups: { teamA: generateLineup(TEAMS.arg, '4-3-3'), teamB: generateLineup(TEAMS.cpv, '4-2-3-1') }
   }
 ];
